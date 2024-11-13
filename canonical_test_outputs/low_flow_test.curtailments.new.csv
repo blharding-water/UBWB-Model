@@ -1,0 +1,15 @@
+Outputs for low_flow_test
+Spell information for low_flow_test
+Discrete spell events
+Duration
+5, 1823759.6
+Nested spells
+Duration
+1, 127287.0,542877.0,1822877.0,3523000.0,3102757.0
+2, 335082.0,1182877.0,2672938.5,3312878.5
+3, 831013.6666666666,1962918.0,2816211.3333333335
+4, 1504010.25,2247877.75
+5, 1823759.6
+Curtailment intervals from spill/curtailment
+Spill: Max:,10.0, Min:,10.0, Mean:,10.00
+Curt.: Max:,1.0, Min:,1.0, Mean:,1.00
