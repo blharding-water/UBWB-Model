@@ -1,0 +1,13 @@
+Outputs for 2007HD Run 2 validation
+Spell information for 2007HD Run 2 validation
+Discrete spell events
+Duration,count,mean
+1,1,2897798.0, 2897798.0
+2,2,1337375.25, 2231310.5,443440.0
+Nested spells
+Duration,count,mean
+1,5,1649459.8, 1153330.0,3309291.0,453935.0,432945.0,2897798.0
+2,2,1337375.25, 2231310.5,443440.0
+Curtailment intervals from spill/curtailment
+Spill: Max:,34.0, Min:,34.0, Mean:,34.00
+Curt.: Max:,9.0, Min:,1.0, Mean:,3.50
