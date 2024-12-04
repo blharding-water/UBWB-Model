@@ -3,7 +3,7 @@
 Created on Tue Nov 12 17:25:44 2024
 
 @author: Ben Harding
-
+License: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/
 """
 import pandas as pd
 import numpy as np
@@ -115,10 +115,10 @@ def write_spell_dict(file, spell_dict, title=None):
     """Writes each duration on one line."""
     if title:
         file.write(f"{title}\n")
-    file.write('Duration\n')
-    for key, values in spell_dict.items():
+    file.write('Duration,count,mean\n')
+    for key, values in sorted(spell_dict.items()):
         values_str = ",".join(map(str, values))
-        file.write(f"{key}, {values_str}\n")
+        file.write(f"{key},{len(values)},{sum(values)/len(values)}, {values_str}\n")
 
 
 def write_spell_percentiles(file, spell_dict, quantiles, title=None):
