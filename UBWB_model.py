@@ -3,15 +3,15 @@ Python 3
 NOTE: This code has errors at boundary cases and certainly has undetected errors
 	  Use at your own risk.
 	  
-Title: Colorado River HD Model
+Title: Upper Basin Water Balance Model
 Author: Ben Harding, bharding@lynker.com
 Source:
 License: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/
 
 Program to simulate the Upper Basin of the Colorado River using the approach
-of the 2007 USBR Hydrologic Determination method (HD2007).
+of the 2007 USBR Hydrologic Determination method (2007HD).
 
- Author: Ben Harding, 2008
+ Author: Ben Harding, 2010
  1-14-2010 CRWAS ensemble method
  9-22-2019 Single-trace method
  9-26-2019 refactoring:    1 make trace method module w/ integral validataion
@@ -22,36 +22,47 @@ of the 2007 USBR Hydrologic Determination method (HD2007).
  6-20-2024 Added code to use 'UB demand' time series if present in input_data
  7-2-2024 Added code to eliminate negative shortages when demand is set
           less than PPR amount. This has happened in an automated yield 
-          determination but it should not happen in a real case.But, JIC.
+          determination but it should not happen in a real case. But, JIC.
  8-11-2024 Added code to check mass balance
  10-29-2024 Added code to reduce UB_depletions when inflows are insufficient
-            This could happen in a climate-change case.
+            This happens in 1977 and 2002 with 2007HD UB demands.
  11-12-2024 Refactored into three modules, HD_model.py, HD_model_utilties.py
             and HD_model_test.py
+ 12-2-2024 Modifications to be consistent with paper:
+            default UB demand = 5.76
+            Use high-level storage options, 'active' and 'live'
 
 """
 
 import pandas as pd
-import HD_model_utilities as HDu
+#import HD_model_utilities as HDu
 
 TOLERANCE = 5 # acre-feet criterion for closure of evaporation solution
 MAX_TRIALS = 5
+LIVE_CAPACITY = 33833590
+ACTIVE_CAPACITY = 29530030
+MEXICO_SHARE = 750000
 
-
-def evaporation(reservoir_contents):
-    """
-    Return reservoir evaporation as a function of reservoir contents.
-    Developed using regression against HD 2007 outputs. This equation 
-    differs from equations called out in HD 2007 text.  USBR seems to base
-    evap on total storage, even though they say they base it on CRSP 
-    storage. This equation results from regression against total storage,
-    using the average of start & end reservoir contents.
-    """
-    # This is the equation to use if simulating use of power pools:
-    #    return(int(round(0.021292*reservoir_contents+5016.897167,0)))
-    # If power pools are to be protected use this equation: 
+"""
+The evaporation functions return reservoir evaporation as a function
+of reservoir contents. Developed using regression against HD 2007 outputs.
+The equations differ from equations called out in HD 2007 text.  USBR seems 
+to base evap on total storage, even though they say they base it on CRSP 
+storage. These equations result from regression against total storage,
+using the average of start & end reservoir contents.
+"""
+def active_evap(reservoir_contents):
+    '''Use when simulating active capacity'''
     return int(round(0.020874 * reservoir_contents + 132877, 0))
 
+def live_evap(reservoir_contents):
+    '''Use when simulating live capacity.'''
+    return(int(round(0.021292*reservoir_contents+5017,0)))
+    
+reservoir_models = {
+    'active':(active_evap,ACTIVE_CAPACITY),
+    'live': (live_evap,LIVE_CAPACITY)
+    }
 
 def mor_release(lf_ann_q, lf_deficit, *args):
     """
@@ -63,7 +74,7 @@ def mor_release(lf_ann_q, lf_deficit, *args):
 
 def no_mor_release(lf_ann_q, lf_deficit, *args):
     """
-    Release the compact deficit.
+    Release the compact deficit 
     """
     return lf_deficit
 
@@ -88,18 +99,36 @@ def trigger_cutback(res_capacity, res_contents, ub_non_ppr_depls):
         return 0.7 * ub_non_ppr_depls
 
 
-def simulate_trace(input_data, start_contents, reservoir_capacity=29530030,
+def simulate_trace(input_data, start_contents=None, res_model='active',
                    lees_ferry_ann_q=8230000, nyrs=10,
                    lees_ferry_n_year_record=None,
-                   lf_release=mor_release, ub_demand=5790000,
+                   lf_release=mor_release, ub_demand=5760000,
                    ppr_volume=2267000, trigger_func=None):
     """
-    Simulate water flow in the Upper Basin.
+    Simulate water balance in the Upper Basin.
+    start_contents default to full.  If user-entered value is greater than
+        capacity, start_contents is set to full, if negative set to 0.
+    res_model is either 'active' (default) or 'live'
+    input_data is expected to be a pandas dataframe with one row for each
+        year and with columns "year" and "flow", at a minimum.  If input_data
+        contains a column "UB demand" that column is expected to contain
+        an annual time series of Upper Basin demand for consumptive use. 
+        This can be used for validation or other analyses, but it has not
+        been tested. Any other columns in input_data are ignored.
     """
+    # initialize parameters
     if lees_ferry_n_year_record is None:
         lees_ferry_n_year_record = nyrs * [lees_ferry_ann_q]
     lees_ferry_cum_q = nyrs * lees_ferry_ann_q
-
+    if res_model not in reservoir_models.keys():
+        print('ERROR: Unknown reservoir model')
+        return None
+    evaporation, reservoir_capacity = reservoir_models[res_model]
+    if not start_contents:
+        start_contents = reservoir_capacity
+    else:
+        start_contents = max(min(start_contents,reservoir_capacity),0)
+    input_data = input_data.copy(deep=True)
     if 'UB demand' not in input_data.columns:
         input_data['UB demand'] = ub_demand
 
